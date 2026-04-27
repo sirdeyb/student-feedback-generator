@@ -685,14 +685,26 @@ async function callOpenAI(prompt) {
 }
 
 async function callGemini(prompt) {
-  const url=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-  const res = await fetch(url, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:1500}})
-  });
-  if(!res.ok){const e=await res.json();throw new Error(e.error?.message||`Gemini error ${res.status}`);}
-  const d=await res.json(); return d.candidates[0].content.parts.map(p=>p.text||'').join('');
+  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  let lastError = 'Unknown error';
+  for (const model of models) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 1500 } })
+      });
+      if (!res.ok) {
+        const e = await res.json();
+        lastError = e.error?.message || `Gemini error ${res.status}`;
+        continue;
+      }
+      const d = await res.json();
+      return d.candidates[0].content.parts.map(p => p.text || '').join('');
+    } catch(e) { lastError = e.message; }
+  }
+  throw new Error(lastError);
 }
 
 // ═══ NAVIGATION ═══
